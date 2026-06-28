@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的盆栽收藏展示館</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        /* ===== 1. 基本與排版骨架設定 (替代原本的 Tailwind 排版) ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f4f7f5 0%, #f1f5f9 100%);
+            min-height: 100vh;
+            padding-bottom: 5rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* 導覽列 */
+        .navbar {
+            background-color: rgba(6, 78, 59, 0.9);
+            /* emerald-900/90 */
+            backdrop-filter: blur(12px);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            border-bottom: 1px solid rgba(6, 95, 70, 0.5);
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            background-color: #065f46;
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            color: #a7f3d0;
+        }
+
+        .logo-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: rgba(167, 243, 208, 0.7);
+        }
+
+        .nav-stats {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .stat-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            display: block;
+            opacity: 0.6;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        /* 主區塊 Grid 排版 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 4fr 8fr;
+                /* 替代 lg:grid-cols-12 比例 */
+            }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-col-gap: 1.5rem;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sticky-panel {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 7rem;
+        }
+
+        /* 表單排版額外設定 */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .flex-row-gap {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .star-row {
+            display: flex;
+            gap: 0.375rem;
+            padding-top: 0.25rem;
+        }
+
+        /* 分類按鈕與清單區域 */
+        .filter-bar {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            position: relative;
+        }
+
+        @media (min-width: 768px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* 植物卡片內部排版 */
+        .card-img-wrapper {
+            position: relative;
+            height: 13rem;
+            overflow: hidden;
+            background-color: #f1f5f9;
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.7s;
+        }
+
+        .card-img:hover {
+            transform: scale(1.05);
+        }
+
+        .card-tag {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #065f46;
+        }
+
+        .card-delete-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            color: #94a3b8;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .card-delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .card-stars {
+            color: #fbbf24;
+            font-size: 0.75rem;
+            display: flex;
+            gap: 0.125rem;
+            padding-top: 0.25rem;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .toggle-detail-btn {
+            margin-top: 0.75rem;
+            background: none;
+            border: none;
+            color: #059669;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .toggle-detail-btn:hover {
+            color: #047857;
+        }
+
+        .card-intro {
+            color: #64748b;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        /* 無資料面板 */
+        .empty-panel {
+            padding: 4rem;
+            text-align: center;
+        }
+
+        .empty-icon-box {
+            width: 4rem;
+            height: 4rem;
+            background-color: #f8fafc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .empty-icon {
+            font-size: 1.5rem;
+            color: #cbd5e1;
+        }
+
+        .empty-text {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+
+        /* ===== 2. 你原本提供的精美原創 CSS ===== */
+        .panel-card {
+            background: white;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #cbd5e1;
+            outline: none;
+            transition: 0.3s;
+            font-size: 0.875rem;
+            background: white;
+        }
+
+        .input-field:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+        }
+
+        .btn-primary {
+            background: #059669;
+            color: white;
+            font-weight: 500;
+            border-radius: 0.75rem;
+            transition: 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #047857;
+        }
+
+        .btn-dark {
+            background: #1e293b;
+            color: white;
+            border-radius: 0.75rem;
+            transition: 0.3s;
+            cursor: pointer;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-dark:hover {
+            background: #0f172a;
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1.2rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: 0.3s;
+            cursor: pointer;
+            white-space: nowrap;
+            border: none;
+        }
+
+        .filter-btn-active {
+            background: #059669;
+            color: white;
+        }
+
+        .filter-btn-normal {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-btn-normal:hover {
+            background: #f8fafc;
+        }
+
+        .plant-card {
+            background: white;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .plant-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow:
+                0 20px 25px -5px rgba(0, 0, 0, 0.05),
+                0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        .star-anim {
+            transition: transform 0.2s ease;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .star-anim:hover {
+            transform: scale(1.2);
+        }
+
+        .text-error {
+            font-size: 0.75rem;
+            color: #ef4444;
+            margin-top: 0.5rem;
+        }
+
+        /* ===== 3. 動畫特效 ===== */
+        .list-enter-active,
+        .list-leave-active {
+            transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+        }
+
+        .list-enter-from,
+        .list-leave-to {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+        }
+
+        .list-move {
+            transition: transform 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+        }
+
+        .list-leave-active {
+            position: absolute;
+            width: calc(50% - 12px);
+        }
+
+        @media (max-width: 768px) {
+            .list-leave-active {
+                width: 100%;
+            }
+        }
+
+        .detail-enter-active,
+        .detail-leave-active {
+            transition: all 0.3s ease-out;
+            max-height: 200px;
+            overflow: hidden;
+        }
+
+        .detail-enter-from,
+        .detail-leave-to {
+            max-height: 0;
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app">
+        <nav class="navbar">
+            <div class="container">
+                <div class="nav-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-folder-open" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>我的盆栽收藏展示館</h1>
+                        <p>Dynamic Collection Vault</p>
+                    </div>
+                </div>
+
+                <div class="nav-stats">
+                    <div class="stat-box">
+                        <i class="fas fa-archive" style="color: #a7f3d0;"></i>
+                        <div>
+                            <span class="stat-label">收藏總數</span>
+                            <span class="stat-value">{{ plants.length }} 筆</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-box">
+                        <i class="fas fa-tags" style="color: #a7f3d0;"></i>
+                        <div>
+                            <span class="stat-label">現有分類</span>
+                            <span class="stat-value">{{ categories.length }} 個</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-box">
+                        <i class="fas fa-star" style="color: #fbbf24;"></i>
+                        <div>
+                            <span class="stat-label">平均推薦</span>
+                            <span class="stat-value">{{ averageRating }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container main-layout">
+
+            <aside class="sidebar">
+                <div class="panel-card">
+                    <h2 class="section-title">
+                        <i class="fas fa-folder-plus" style="margin-right: 0.5rem; color: #059669;"></i>
+                        建立新分類
+                    </h2>
+                    <div class="flex-row-gap">
+                        <input v-model="newCategoryName" type="text" placeholder="例如：觀葉植物"
+                            @keyup.enter="createNewCategory" class="input-field">
+                        <button @click="createNewCategory" class="btn-dark btn-bounce">
+                            新增
+                        </button>
+                    </div>
+                    <p v-if="catErrorMessage" class="text-error">
+                        {{ catErrorMessage }}
+                    </p>
+                </div>
+
+                <div class="panel-card sticky-panel">
+                    <h2 class="section-title">
+                        <i class="fas fa-plus-circle" style="margin-right: 0.5rem; color: #059669;"></i>
+                        新增收藏項目
+                    </h2>
+
+                    <form @submit.prevent="addPlant" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">物件名稱</label>
+                            <input v-model="newPlant.name" type="text" required class="input-field"
+                                placeholder="例如：白犀牛海芋">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">選擇分類</label>
+                            <select v-model="newPlant.category" class="input-field">
+                                <option v-for="cat in categories" :key="cat" :value="cat">
+                                    {{ cat }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">圖片網址</label>
+                            <input v-model="newPlant.imgUrl" type="url" required class="input-field"
+                                placeholder="請輸入圖片網址">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">推薦星等</label>
+                            <div class="star-row">
+                                <i v-for="i in 5" :key="i" @click="newPlant.rating = i" :class="[
+                                        'fas fa-star star-anim',
+                                        i <= newPlant.rating ? 'text-amber' : ''
+                                    ]" :style="{ color: i <= newPlant.rating ? '#fbbf24' : '#e2e8f0' }">
+                                </i>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">詳細介紹</label>
+                            <textarea v-model="newPlant.intro" rows="3" required class="input-field"
+                                placeholder="請輸入物件詳細描述..." style="resize: vertical;"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-bounce" style="width: 100%; padding: 0.75rem 0;">
+                            確認儲存至收藏館
+                        </button>
+                    </form>
+                </div>
+            </aside>
+
+            <main>
+                <div class="filter-bar">
+                    <button @click="currentFilter='全部'" :class="[
+                            'filter-btn',
+                            currentFilter==='全部' ? 'filter-btn-active' : 'filter-btn-normal'
+                        ]">
+                        全部
+                    </button>
+
+                    <button v-for="cat in categories" :key="cat" @click="currentFilter=cat" :class="[
+                            'filter-btn',
+                            currentFilter===cat ? 'filter-btn-active' : 'filter-btn-normal'
+                        ]">
+                        {{ cat }}
+                    </button>
+                </div>
+
+                <div style="position: relative;">
+                    <transition-group name="list" tag="div" class="cards-grid">
+                        <div v-for="plant in filteredPlants" :key="plant.id" class="plant-card">
+                            <div class="card-img-wrapper">
+                                <img :src="plant.imgUrl" :alt="plant.name" class="card-img">
+                                <span class="card-tag">{{ plant.category }}</span>
+                                <button @click="deletePlant(plant.id)" class="card-delete-btn btn-bounce">
+                                    <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                                </button>
+                            </div>
+
+                            <div class="card-body">
+                                <div class="card-header">
+                                    <h3 class="card-title">{{ plant.name }}</h3>
+                                    <div class="card-stars">
+                                        <i v-for="i in 5" :key="i" :class="[
+                                                i <= plant.rating ? 'fas fa-star' : 'far fa-star'
+                                            ]" :style="{ color: i <= plant.rating ? '#fbbf24' : '#cbd5e1' }">
+                                        </i>
+                                    </div>
+                                </div>
+
+                                <transition name="detail">
+                                    <p v-show="plant.showDetail" class="card-intro">
+                                        {{ plant.intro }}
+                                    </p>
+                                </transition>
+
+                                <div class="card-footer">
+                                    <button @click="plant.showDetail=!plant.showDetail" class="toggle-detail-btn">
+                                        {{ plant.showDetail ? '隱藏詳細資料' : '顯示詳細資料' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </transition-group>
+
+                    <transition name="list">
+                        <div v-if="filteredPlants.length===0" class="panel-card empty-panel">
+                            <div class="empty-icon-box">
+                                <i class="fas fa-box-open empty-icon"></i>
+                            </div>
+                            <p class="empty-text">此類別目前尚無收藏</p>
+                        </div>
+                    </transition>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, reactive, watch } = Vue;
+
+        createApp({
+            setup() {
+                const defaultCategories = ['觀葉植物', '多肉植物', '塊根植物', '空氣植物', '香草植物'];
+                const defaultPlants = [
+                    {
+                        id: 1,
+                        name: "經典龜背芋",
+                        category: "觀葉植物",
+                        imgUrl: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500",
+                        intro: "十分耐陰耐旱，是新手友好的首選植物。",
+                        rating: 5,
+                        showDetail: false
+                    },
+                    {
+                        id: 2,
+                        name: "乙女心多肉",
+                        category: "多肉植物",
+                        imgUrl: "https://img.shoplineapp.com/media/image_clips/60dc538a261fc7003ef844ff/original.jpg?1625052041",
+                        intro: "葉片飽滿圓潤，日照充足會變粉紅色。",
+                        rating: 4,
+                        showDetail: false
+                    },
+                    {
+                        id: 3,
+                        name: "象牙宮",
+                        category: "塊根植物",
+                        imgUrl: "https://media.karousell.com/media/photos/products/2018/09/19/pachypodium_rosulatum_var_gracilius___cactuts_cacti_succulents___1537327737_9ef71553_progressive.jpg",
+                        intro: "滿足其基本需求，適應了新環境,就很容易養護。它有著像膨脹的塊莖,像是小肚腩,枝幹長很矮小,富有藝術感。",
+                        rating: 3,
+                        showDetail: false
+                    },
+                    {
+                        id: 4,
+                        name: "積水鳳梨",
+                        category: "空氣植物",
+                        imgUrl: "https://img.shoplineapp.com/media/image_clips/66b45309236b07a3889d444f/original.JPG?1723093769",
+                        intro: "葉片中心有一個天然的「水槽」，會反射出極其鮮豔的管狀色彩（紅、紫、斑點），在強光下像一朵永不凋謝的彩色蓮花。",
+                        rating: 5,
+                        showDetail: false
+                    },
+                    {
+                        id: 5,
+                        name: "薰衣草",
+                        category: "香草植物",
+                        imgUrl: "https://www.pycu.cn/zb_users/upload/2023/07/20230704132235_84264.jpeg",
+                        intro: "木質化的枝條搭配細小的葉片，其散發的獨特香氣對於驅趕蚊蟲有良好的效果，非常適合種植在陽台或庭院的通風處。",
+                        rating: 4,
+                        showDetail: false
+                    }
+                ];
+
+                // 讀取快取
+                const categories = ref(JSON.parse(localStorage.getItem('plant_categories')) || defaultCategories);
+                const plants = ref(JSON.parse(localStorage.getItem('plant_items')) || defaultPlants);
+
+                // 自動儲存快取
+                watch(categories, (newVal) => localStorage.setItem('plant_categories', JSON.stringify(newVal)), { deep: true });
+                watch(plants, (newVal) => localStorage.setItem('plant_items', JSON.stringify(newVal)), { deep: true });
+
+                const currentFilter = ref('全部');
+                const newCategoryName = ref('');
+                const catErrorMessage = ref('');
+
+                const newPlant = reactive({
+                    name: '',
+                    category: '觀葉植物',
+                    imgUrl: '',
+                    rating: 5,
+                    intro: ''
+                });
+
+                const createNewCategory = () => {
+                    const trimmed = newCategoryName.value.trim();
+                    catErrorMessage.value = '';
+                    if (!trimmed) { catErrorMessage.value = '分類名稱不能空白'; return; }
+                    if (categories.value.includes(trimmed)) { catErrorMessage.value = '分類已存在'; return; }
+
+                    categories.value.push(trimmed);
+                    newPlant.category = trimmed;
+                    newCategoryName.value = '';
+                };
+
+                const addPlant = () => {
+                    plants.value.push({
+                        id: Date.now(),
+                        ...newPlant,
+                        showDetail: false
+                    });
+                    newPlant.name = '';
+                    newPlant.imgUrl = '';
+                    newPlant.intro = '';
+                    newPlant.rating = 5;
+                };
+
+                const deletePlant = (id) => {
+                    plants.value = plants.value.filter(p => p.id !== id);
+                };
+
+                const filteredPlants = computed(() => {
+                    if (currentFilter.value === '全部') return plants.value;
+                    return plants.value.filter(p => p.category === currentFilter.value);
+                });
+
+                const averageRating = computed(() => {
+                    if (plants.value.length === 0) return '0.0';
+                    const total = plants.value.reduce((acc, p) => acc + p.rating, 0);
+                    return (total / plants.value.length).toFixed(1);
+                });
+
+                return {
+                    categories, currentFilter, newCategoryName, catErrorMessage,
+                    createNewCategory, plants, newPlant, addPlant, deletePlant,
+                    filteredPlants, averageRating
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
