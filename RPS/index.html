@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate RPS Battle - 三戰兩勝</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #0f172a;
+            --win: #4ade80;
+            --lose: #f87171;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            border-radius: 2.5rem;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        /* 頂部三戰兩勝統計 */
+        .match-score {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .score-dot {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s;
+        }
+        .score-dot.win { background: var(--win); box-shadow: 0 0 15px var(--win); border-color: white; }
+        .score-dot.lose { background: var(--lose); box-shadow: 0 0 15px var(--lose); border-color: white; }
+
+        /* 卡牌翻轉動畫 */
+        .card-container {
+            perspective: 1000px;
+            width: 150px;
+            height: 200px;
+            margin: 20px auto;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .card.reveal { transform: rotateY(180deg); }
+        
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 5rem;
+            border-radius: 1rem;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-back { background: linear-gradient(45deg, var(--primary), var(--secondary)); }
+        .card-front { background: white; transform: rotateY(180deg); color: #333; }
+
+        .choices { display: flex; justify-content: center; gap: 1rem; margin: 2rem 0; }
+        .btn-choice {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 1rem;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 2rem;
+            color: white;
+        }
+        .btn-choice:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); transform: scale(1.1); }
+        .btn-choice:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 最終勝利彈窗 */
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 100;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.5s;
+        }
+        #overlay h2 { font-size: 4rem; margin-bottom: 1rem; }
+        .restart-btn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 2rem;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <h2 id="finalMessage">VICTORY</h2>
+    <button class="restart-btn" onclick="resetGame()">重新開始</button>
+</div>
+
+<div class="container">
+    <h1 style="margin:0">Round Battle</h1>
+    <p id="roundTitle">第 1 戰 / 共 3 戰</p>
+    
+    <div class="match-score" id="scorePanel">
+        <div class="score-dot"></div>
+        <div class="score-dot"></div>
+        <div class="score-dot"></div>
+    </div>
+
+    <div class="card-container">
+        <div class="card" id="pcCard">
+            <div class="card-face card-back">❓</div>
+            <div class="card-face card-front" id="pcFront">👊</div>
+        </div>
+    </div>
+
+    <div id="statusMsg">請選擇出拳...</div>
+
+    <div class="choices">
+        <button class="btn-choice" onclick="playGame('石頭')">✊</button>
+        <button class="btn-choice" onclick="playGame('剪刀')">✌️</button>
+        <button class="btn-choice" onclick="playGame('布')">✋</button>
+    </div>
+</div>
+
+<script>
+    const emojis = { '石頭': '✊', '剪刀': '✌️', '布': '✋' };
+    let matchHistory = []; // 紀錄每局結果
+    let playerWins = 0;
+    let computerWins = 0;
+
+    // 教師提示 1: 電腦出拳 
+    function getComputerChoice() {
+        const choices = ['石頭', '剪刀', '布'];
+        return choices[Math.floor(Math.random() * 3)];
+    }
+
+    // 教師提示 2: 判斷輸贏 
+    function judge(player, computer) {
+        if (player === computer) return 'draw';
+        if ((player === '石頭' && computer === '剪刀') || 
+            (player === '剪刀' && computer === '布') || 
+            (player === '布' && computer === '石頭')) return 'win';
+        return 'lose';
+    }
+
+    // 教師提示 3: 執行一局 (含翻牌與計分邏輯) 
+    function playGame(playerChoice) {
+        // 1. 鎖定按鈕防止連點
+        const buttons = document.querySelectorAll('.btn-choice');
+        buttons.forEach(b => b.disabled = true);
+
+        const computerChoice = getComputerChoice();
+        const result = judge(playerChoice, computerChoice);
+
+        // 2. 更新電腦卡牌內容並翻轉 
+        document.getElementById('pcFront').innerText = emojis[computerChoice];
+        document.getElementById('pcCard').classList.add('reveal');
+
+        // 3. 處理計分 (平手不計入三戰之內，重新再來)
+        setTimeout(() => {
+            if (result !== 'draw') {
+                matchHistory.push(result);
+                if (result === 'win') playerWins++;
+                else computerWins++;
+                updateScorePanel();
+            }
+            
+            document.getElementById('statusMsg').innerText = `你出 ${playerChoice}，電腦出 ${computerChoice}：${result === 'draw' ? '平手！再試一次' : (result === 'win' ? '你贏了！' : '輸了...')}`;
+
+            // 4. 檢查賽果
+            setTimeout(() => {
+                if (playerWins === 2 || computerWins === 2) {
+                    showFinalResult(playerWins === 2 ? 'WIN' : 'LOSE');
+                } else {
+                    // 準備下一戰
+                    resetCard();
+                    buttons.forEach(b => b.disabled = false);
+                    document.getElementById('roundTitle').innerText = `第 ${matchHistory.length + 1} 戰 / 共 3 戰`;
+                }
+            }, 1000);
+        }, 600);
+    }
+
+    function updateScorePanel() {
+        const dots = document.getElementById('scorePanel').children;
+        matchHistory.forEach((res, index) => {
+            dots[index].className = `score-dot ${res}`;
+        });
+    }
+
+    function resetCard() {
+        document.getElementById('pcCard').classList.remove('reveal');
+        document.getElementById('statusMsg').innerText = "準備好，請出拳！";
+    }
+
+    function showFinalResult(type) {
+        const overlay = document.getElementById('overlay');
+        const msg = document.getElementById('finalMessage');
+        overlay.style.display = 'flex';
+        if (type === 'WIN') {
+            msg.innerText = "🏆 最終大勝利！";
+            msg.style.color = "var(--win)";
+        } else {
+            msg.innerText = "💀 被電腦擊敗了...";
+            msg.style.color = "var(--lose)";
+        }
+    }
+
+    function resetGame() {
+        matchHistory = [];
+        playerWins = 0;
+        computerWins = 0;
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('roundTitle').innerText = `第 1 戰 / 共 3 戰`;
+        const dots = document.getElementById('scorePanel').children;
+        for (let dot of dots) dot.className = 'score-dot';
+        resetCard();
+        document.querySelectorAll('.btn-choice').forEach(b => b.disabled = false);
+    }
+</script>
+
+</body>
+</html>
